@@ -1,26 +1,35 @@
-# Use Node.js 20 image
-FROM node:20
+# BRMND - Brasil no Mundo
+# Dockerfile para EasyPanel
 
-# Set working directory
+FROM node:20-alpine
+
 WORKDIR /app
 
-# Copy package files
+# Instalar curl para healthcheck
+RUN apk add --no-cache python3 make g++ curl
+
+# Copiar package.json
 COPY package*.json ./
 
-# Install all dependencies (including devDependencies needed for build and tsx)
+# Instalar dependências
 RUN npm install
 
-# Copy the rest of the application
+# Copiar código fonte
 COPY . .
 
-# Build the frontend (Vite)
+# Build do frontend
 RUN npm run build
 
-# Expose port 3000
+# Variáveis de ambiente
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Expor porta
 EXPOSE 3000
 
-# Set environment to production
-ENV NODE_ENV=production
+# Healthcheck a cada 30s
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3000/ || exit 1
 
-# Start the server using tsx
+# Iniciar servidor
 CMD ["npm", "start"]
