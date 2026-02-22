@@ -64,9 +64,5 @@ USER brmnd
 # Expor porta
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
-
 # Iniciar servidor com tsx (TypeScript runtime)
 CMD ["npx", "tsx", "server.ts"]
