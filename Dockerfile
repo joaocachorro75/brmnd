@@ -33,6 +33,9 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
+# Instalar curl para healthcheck
+RUN apk add --no-cache curl
+
 # Variáveis de ambiente
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -64,7 +67,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+  CMD curl -f http://localhost:3000/ || exit 1
 
 # Iniciar servidor com tsx (TypeScript runtime)
 CMD ["npx", "tsx", "server.ts"]
