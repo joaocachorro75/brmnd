@@ -270,8 +270,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static(path.join(__dirname, "dist")));
-    // Express 5.x wildcard syntax - captura todas as rotas para SPA
-    app.get("/{*path}", (req, res) => res.sendFile(path.join(__dirname, "dist", "index.html")));
+    app.get("*", (req, res) => res.sendFile(path.join(__dirname, "dist", "index.html")));
   }
 
   httpServer.listen(PORT, "0.0.0.0", () => {
