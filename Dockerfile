@@ -20,7 +20,10 @@ COPY vite.config.ts ./
 RUN npm ci
 
 # Copiar código fonte
-COPY . .
+COPY server.ts ./
+COPY src ./src
+COPY index.html ./
+COPY public ./public 2>/dev/null || true
 
 # Build do frontend (gera pasta dist/)
 RUN npm run build
@@ -40,15 +43,15 @@ RUN adduser --system --uid 1001 brmnd
 
 # Copiar arquivos de produção
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
-
-# Instalar apenas dependências de produção + tsx
-RUN npm ci --only=production && \
-    npm install tsx
-
-# Copiar servidor TypeScript
 COPY --from=builder /app/server.ts ./
+COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/tsconfig.json ./
+
+# Instalar dependências (tsx é necessário para rodar TypeScript)
+RUN npm ci --only=production && npm cache clean --force
+
+# Instalar tsx para rodar TypeScript diretamente
+RUN npm install tsx
 
 # Ajustar permissões
 RUN chown -R brmnd:nodejs /app
@@ -63,5 +66,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# Iniciar servidor
+# Iniciar servidor com tsx (TypeScript runtime)
 CMD ["npx", "tsx", "server.ts"]
