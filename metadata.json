@@ -1,0 +1,5 @@
+{
+  "name": "Brasil no Mundo",
+  "description": "Uma plataforma para conectar a comunidade brasileira no exterior, promovendo negócios, eventos e apoio mútuo entre brasileiros pelo mundo.",
+  "requestFramePermissions": ["geolocation"]
+}
