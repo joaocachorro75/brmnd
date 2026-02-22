@@ -23,7 +23,6 @@ RUN npm ci
 COPY server.ts ./
 COPY src ./src
 COPY index.html ./
-COPY public ./public 2>/dev/null || true
 
 # Build do frontend (gera pasta dist/)
 RUN npm run build
