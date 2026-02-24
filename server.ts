@@ -100,6 +100,8 @@ async function startServer() {
   };
 
   // API Routes
+  app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+
   app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body;
     const user = db.users.find(u => u.email === email);
@@ -303,8 +305,14 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, "dist")));
-    app.get(/.*/, (req, res) => res.sendFile(path.join(__dirname, "dist", "index.html")));
+    const distPath = path.join(__dirname, "dist");
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get(/.*/, (req, res) => res.sendFile(path.join(distPath, "index.html")));
+    } else {
+      console.warn("Warning: 'dist' directory not found.");
+      app.get(/.*/, (req, res) => res.send("Server is running, but frontend build is missing."));
+    }
   }
 
   httpServer.listen(PORT, "0.0.0.0", () => {
