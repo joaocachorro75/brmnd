@@ -10,8 +10,10 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Porta padrão (o Easypanel pode sobrescrever isso via variável PORT)
+# Porta padrão
+ENV PORT=3000
+ENV NODE_ENV=production
 EXPOSE 3000
 
-# Inicia o servidor
-CMD ["npm", "start"]
+# Inicia o servidor diretamente para melhor gerenciamento de processos
+CMD ["npx", "tsx", "server.ts"]

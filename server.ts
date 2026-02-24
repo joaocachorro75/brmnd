@@ -316,7 +316,10 @@ async function startServer() {
   }
 
   httpServer.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`🚀 Server is up and running!`);
+    console.log(`   - Internal Port: ${PORT}`);
+    console.log(`   - Health Check: http://localhost:${PORT}/api/health`);
+    console.log(`   - Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 
