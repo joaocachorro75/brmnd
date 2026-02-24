@@ -4,9 +4,12 @@ import { Server } from "socket.io";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import cookieParser from "cookie-parser";
+import compression from "compression";
+import helmet from "helmet";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,8 +25,10 @@ async function startServer() {
 
   const PORT = 3000;
 
+  const DB_PATH = path.join(__dirname, "db.json");
+
   // In-memory "Database"
-  const db = {
+  let db = {
     settings: {
       logo: "B",
       siteName: "Brasil no Mundo"
@@ -61,8 +66,27 @@ async function startServer() {
     transactions: []
   };
 
+  // Load DB if exists
+  if (fs.existsSync(DB_PATH)) {
+    try {
+      const savedDb = JSON.parse(fs.readFileSync(DB_PATH, "utf-8"));
+      db = { ...db, ...savedDb };
+    } catch (e) {
+      console.error("Error loading database, using defaults");
+    }
+  }
+
+  const saveDb = () => {
+    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+  };
+
   app.use(express.json());
   app.use(cookieParser());
+  app.use(compression());
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP for easier development/preview
+    crossOriginEmbedderPolicy: false
+  }));
 
   // Auth Middleware
   const authenticateToken = (req: any, res: any, next: any) => {
@@ -140,6 +164,7 @@ async function startServer() {
   app.post("/api/admin/settings", authenticateToken, (req: any, res) => {
     if (req.user.role !== 'admin') return res.sendStatus(403);
     db.settings = { ...db.settings, ...req.body };
+    saveDb();
     io.emit("settings:updated", db.settings);
     res.json(db.settings);
   });
@@ -147,6 +172,7 @@ async function startServer() {
   app.post("/api/admin/plans", authenticateToken, (req: any, res) => {
     if (req.user.role !== 'admin') return res.sendStatus(403);
     db.plans = req.body;
+    saveDb();
     io.emit("plans:updated", db.plans);
     res.json(db.plans);
   });
@@ -163,6 +189,7 @@ async function startServer() {
       date: new Date().toISOString()
     };
     db.posts.push(newPost);
+    saveDb();
     res.json(newPost);
   });
 
@@ -171,6 +198,7 @@ async function startServer() {
     const post = db.posts.find(p => p.id === parseInt(req.params.id));
     if (post) {
       post.status = "approved";
+      saveDb();
       io.emit("post:approved", post);
       res.json(post);
     } else {
@@ -183,6 +211,7 @@ async function startServer() {
     const post = db.posts.find(p => p.id === parseInt(req.params.id));
     if (post) {
       post.status = "rejected";
+      saveDb();
       res.json(post);
     } else {
       res.sendStatus(404);
@@ -217,6 +246,7 @@ async function startServer() {
         amount: plan.price,
         date: new Date().toISOString()
       });
+      saveDb();
       res.json({ success: true, plan: planId });
     } else {
       res.status(404).json({ message: "Usuário ou plano não encontrado" });
@@ -231,6 +261,7 @@ async function startServer() {
   app.post("/api/meetups", authenticateToken, (req: any, res) => {
     const meetup = { ...req.body, id: Date.now(), attendees: 1, creator: req.user.name };
     db.meetups.push(meetup);
+    saveDb();
     io.emit("meetup:new", meetup);
     res.json(meetup);
   });
@@ -238,6 +269,7 @@ async function startServer() {
   app.post("/api/businesses", authenticateToken, (req: any, res) => {
     const business = { ...req.body, id: Date.now(), status: "pending" };
     db.businesses.push(business);
+    saveDb();
     res.json(business);
   });
 
@@ -246,6 +278,7 @@ async function startServer() {
     const business = db.businesses.find(b => b.id === parseInt(req.params.id));
     if (business) {
       business.status = "approved";
+      saveDb();
       io.emit("business:approved", business);
     }
     res.sendStatus(200);
@@ -257,6 +290,7 @@ async function startServer() {
       const newMsg = { ...msg, id: Date.now(), time: new Date().toISOString() };
       db.messages.push(newMsg);
       if (db.messages.length > 50) db.messages.shift();
+      saveDb();
       io.emit("message:new", newMsg);
     });
   });
@@ -270,7 +304,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static(path.join(__dirname, "dist")));
-    app.get("/{*path}", (req, res) => res.sendFile(path.join(__dirname, "dist", "index.html")));
+    app.get("*", (req, res) => res.sendFile(path.join(__dirname, "dist", "index.html")));
   }
 
   httpServer.listen(PORT, "0.0.0.0", () => {

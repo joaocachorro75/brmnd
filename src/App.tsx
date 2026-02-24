@@ -406,7 +406,7 @@ const MeetupsSection = ({ socket, user }: any) => {
 const AdminDashboard = ({ onClose, settings, onSettingsUpdate }: any) => {
   const [fullState, setFullState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'stats' | 'plans' | 'settings'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'plans' | 'settings' | 'users' | 'payments' | 'blog'>('stats');
   const [newLogo, setNewLogo] = useState(settings?.logo || '');
   const [newSiteName, setNewSiteName] = useState(settings?.siteName || '');
 
@@ -437,6 +437,16 @@ const AdminDashboard = ({ onClose, settings, onSettingsUpdate }: any) => {
 
   const approveBusiness = async (id: number) => {
     await fetch(`/api/admin/businesses/${id}/approve`, { method: 'POST' });
+    fetchFullState();
+  };
+
+  const approvePost = async (id: number) => {
+    await fetch(`/api/admin/posts/${id}/approve`, { method: 'POST' });
+    fetchFullState();
+  };
+
+  const rejectPost = async (id: number) => {
+    await fetch(`/api/admin/posts/${id}/reject`, { method: 'POST' });
     fetchFullState();
   };
 
@@ -477,7 +487,10 @@ const AdminDashboard = ({ onClose, settings, onSettingsUpdate }: any) => {
         <div className="flex gap-4 mb-12 overflow-x-auto pb-2">
           {[
             { id: 'stats', label: 'Estatísticas', icon: ShieldCheck },
-            { id: 'plans', label: 'Planos & Assinaturas', icon: CreditCard },
+            { id: 'users', label: 'Usuários', icon: Users },
+            { id: 'payments', label: 'Pagamentos', icon: History },
+            { id: 'blog', label: 'Blog', icon: BookOpen },
+            { id: 'plans', label: 'Planos', icon: CreditCard },
             { id: 'settings', label: 'Configurações', icon: Settings2 }
           ].map(tab => (
             <button
@@ -501,7 +514,7 @@ const AdminDashboard = ({ onClose, settings, onSettingsUpdate }: any) => {
                 { label: 'Usuários', val: fullState?.users?.length || 0, color: 'emerald' },
                 { label: 'Negócios', val: fullState?.businesses?.length || 0, color: 'stone' },
                 { label: 'Encontros', val: fullState?.meetups?.length || 0, color: 'stone' },
-                { label: 'Mensagens', val: fullState?.messages?.length || 0, color: 'stone' }
+                { label: 'Posts', val: fullState?.posts?.length || 0, color: 'stone' }
               ].map((s, i) => (
                 <div key={i} className={cn(
                   "p-8 rounded-[2.5rem] border transition-all",
@@ -538,9 +551,6 @@ const AdminDashboard = ({ onClose, settings, onSettingsUpdate }: any) => {
                           >
                             <CheckCircle2 size={18} />
                           </button>
-                          <button className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all">
-                            <X size={18} />
-                          </button>
                         </div>
                       </div>
                       <p className="text-sm text-stone-500 font-medium leading-relaxed">{b.description}</p>
@@ -556,43 +566,152 @@ const AdminDashboard = ({ onClose, settings, onSettingsUpdate }: any) => {
 
               <div className="space-y-8">
                 <h4 className="text-xl font-black text-stone-900 tracking-tight flex items-center gap-3">
-                  <Users size={24} className="text-emerald-600" /> ÚLTIMOS USUÁRIOS
+                  <BookOpen size={24} className="text-emerald-600" /> POSTS PENDENTES
                 </h4>
-                <div className="bg-stone-50 rounded-[2.5rem] border border-stone-100 overflow-hidden">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-stone-200">
-                        <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Usuário</th>
-                        <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Role</th>
-                        <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100">
-                      {fullState?.users?.slice(0, 5).map((u: any) => (
-                        <tr key={u.id} className="hover:bg-white transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <img src={u.avatar} className="w-8 h-8 rounded-xl" alt="" />
-                              <span className="text-sm font-bold text-stone-900">{u.name}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={cn(
-                              "text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-widest",
-                              u.role === 'admin' ? "bg-stone-900 text-white" : "bg-emerald-50 text-emerald-600"
-                            )}>{u.role}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <button className="text-stone-300 hover:text-stone-900 transition-colors"><Settings size={16} /></button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="space-y-4">
+                  {fullState?.posts?.filter((p: any) => p.status === 'pending').map((p: any) => (
+                    <div key={p.id} className="p-6 bg-stone-50 rounded-[2rem] border border-stone-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <p className="font-black text-stone-900 text-lg tracking-tight">{p.title}</p>
+                          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Por {p.author}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={async () => {
+                              await fetch(`/api/admin/posts/${p.id}/approve`, { method: 'POST' });
+                              fetchFullState();
+                            }}
+                            className="p-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all"
+                          >
+                            <CheckCircle2 size={18} />
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              await fetch(`/api/admin/posts/${p.id}/reject`, { method: 'POST' });
+                              fetchFullState();
+                            }}
+                            className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {fullState?.posts?.filter((p: any) => p.status === 'pending').length === 0 && (
+                    <div className="p-12 text-center border-2 border-dashed border-stone-100 rounded-[2rem]">
+                      <p className="text-stone-300 font-bold uppercase tracking-widest text-xs">Nenhum post pendente</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </>
+        )}
+
+        {activeTab === 'users' && (
+          <div className="bg-stone-50 rounded-[2.5rem] border border-stone-100 overflow-hidden">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-stone-200">
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Usuário</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Role</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Plano</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Ação</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {fullState?.users?.map((u: any) => (
+                  <tr key={u.id} className="hover:bg-white transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <img src={u.avatar} className="w-8 h-8 rounded-xl" alt="" />
+                        <span className="text-sm font-bold text-stone-900">{u.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn(
+                        "text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-widest",
+                        u.role === 'admin' ? "bg-stone-900 text-white" : "bg-emerald-50 text-emerald-600"
+                      )}>{u.role}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-xs font-bold text-stone-600 uppercase">{u.plan || 'free'}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button className="text-stone-300 hover:text-stone-900 transition-colors"><Settings size={16} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'payments' && (
+          <div className="bg-stone-50 rounded-[2.5rem] border border-stone-100 overflow-hidden">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-stone-200">
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">ID Transação</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Usuário</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Valor</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Data</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {fullState?.transactions?.map((t: any) => (
+                  <tr key={t.id} className="hover:bg-white transition-colors">
+                    <td className="px-6 py-4 text-xs font-mono text-stone-500">{t.id}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-stone-900">{t.userName}</td>
+                    <td className="px-6 py-4 text-sm font-black text-emerald-600">R$ {t.amount.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-xs text-stone-400">{new Date(t.date).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'blog' && (
+          <div className="bg-stone-50 rounded-[2.5rem] border border-stone-100 overflow-hidden">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-stone-200">
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Título</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Autor</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Ação</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {fullState?.posts?.map((p: any) => (
+                  <tr key={p.id} className="hover:bg-white transition-colors">
+                    <td className="px-6 py-4 text-sm font-bold text-stone-900">{p.title}</td>
+                    <td className="px-6 py-4 text-sm text-stone-600">{p.author}</td>
+                    <td className="px-6 py-4">
+                      <span className={cn(
+                        "text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-widest",
+                        p.status === 'approved' ? "bg-emerald-50 text-emerald-600" : 
+                        p.status === 'pending' ? "bg-yellow-50 text-yellow-600" : "bg-red-50 text-red-600"
+                      )}>{p.status}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        {p.status !== 'approved' && (
+                          <button onClick={() => approvePost(p.id)} className="text-emerald-600 hover:text-emerald-700"><CheckCircle2 size={16} /></button>
+                        )}
+                        {p.status !== 'rejected' && (
+                          <button onClick={() => rejectPost(p.id)} className="text-red-600 hover:text-red-700"><X size={16} /></button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {activeTab === 'plans' && (
@@ -1076,6 +1195,8 @@ export default function App() {
             </div>
           </div>
         </section>
+
+        <Blog posts={posts} user={user} onPostCreate={() => setShowPostCreate(true)} />
 
         {/* AI Guide */}
         <section id="guia" className="py-32 bg-stone-900 text-white overflow-hidden relative">
